@@ -7,7 +7,7 @@ import InputBox from './components/InputBox';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function App() {
-  const [selectedModel, setSelectedModel] = useState('gpt-4.1');
+  const [selectedModel, setSelectedModel] = useState('');
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentUserText, setCurrentUserText] = useState('');
@@ -88,6 +88,23 @@ function App() {
 
             try {
               const parsed = JSON.parse(data);
+
+              // Handle error from backend
+              if (parsed.error) {
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  newMessages[aiMessageIndex] = {
+                    role: 'assistant',
+                    content: parsed.error,
+                    streaming: false,
+                    error: true
+                  };
+                  return newMessages;
+                });
+                setIsStreaming(false);
+                return;
+              }
+
               if (parsed.content) {
                 // Capture first token time
                 if (!firstTokenTime) {

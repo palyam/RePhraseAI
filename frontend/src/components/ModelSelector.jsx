@@ -40,6 +40,15 @@ export default function ModelSelector({ selectedModel, onModelChange }) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-red-400">⚠️ Connection Error</span>
+        <span className="text-xs text-red-300">Cannot connect to backend at {API_URL}</span>
+      </div>
+    );
+  }
+
   // Helper function to get model display name
   const getModelDisplayName = (model) => {
     // Format model names for better readability
@@ -62,6 +71,14 @@ export default function ModelSelector({ selectedModel, onModelChange }) {
         .replace('-global', '')
         .replace('-', ' ')
         .toUpperCase();
+    } else if (model.startsWith('gemini')) {
+      return model
+        .replace('gemini-', 'Gemini ')
+        .replace('-flash-lite', ' Flash Lite')
+        .replace('-flash', ' Flash')
+        .replace('-pro', ' Pro')
+        .replace('2.5', '2.5')
+        .replace('2.0', '2.0');
     }
     return model;
   };
@@ -94,6 +111,13 @@ export default function ModelSelector({ selectedModel, onModelChange }) {
             {modelCategories.openai && modelCategories.openai.length > 0 && (
               <optgroup label="⚡ OpenAI Models">
                 {modelCategories.openai.map(model => (
+                  <option key={model} value={model}>{getModelDisplayName(model)}</option>
+                ))}
+              </optgroup>
+            )}
+            {modelCategories.google && modelCategories.google.length > 0 && (
+              <optgroup label="🔷 Google Models">
+                {modelCategories.google.map(model => (
                   <option key={model} value={model}>{getModelDisplayName(model)}</option>
                 ))}
               </optgroup>

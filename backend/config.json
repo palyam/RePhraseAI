@@ -1,22 +1,19 @@
 {
-  "llm_gateway_url": "https://api-epic.ir-gateway.abbvienet.com/iliad/anthropic/v1",
-  "default_model": "gpt-4.1",
-  "openai_gateway_url": "https://api-epic.ir-gateway.abbvienet.com/iliad/openai",
+  "default_model": "gpt-4o-mini",
   "available_models": {
     "anthropic": [
       "claude-sonnet-4-5-20250929",
-      "claude-sonnet-4-20250514",
-      "claude-opus-4-20250514"
+      "claude-sonnet-4-20250522"
     ],
     "openai": [
+      "gpt-4o",
       "gpt-4.1",
-      "gpt-4.1-mini",
-      "gpt-4.1-nano",
-      "o3-global",
-      "gpt-5-global",
-      "gpt-5-mini-global",
-      "gpt-5-nano-global",
-      "o4-mini-bal"
+      "gpt-4o-mini"
+    ],
+    "google": [
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash-lite"
     ]
   }
 }

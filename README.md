@@ -22,16 +22,16 @@ RePhraseAI is an intelligent writing assistant that helps you rephrase text in v
 │                        RePhraseAI                           │
 └─────────────────────────────────────────────────────────────┘
 
-┌──────────────────┐         ┌──────────────────┐         ┌──────────────────┐
-│                  │         │                  │         │                  │
-│   Frontend       │◄───────►│    Backend       │◄───────►│   LLM Gateway    │
-│   React + Vite   │  HTTP   │  Flask + Python  │  HTTPS  │   (Iliad API)    │
-│                  │         │                  │         │                  │
-└──────────────────┘         └──────────────────┘         └──────────────────┘
-      │                            │                             │
-      │                            │                             │
-  Tailwind CSS             Config + Prompts              Anthropic/OpenAI
-  Lucide Icons            Environment Vars                   Models
+┌──────────────────┐         ┌──────────────────┐         ┌────────────────────┐
+│                  │         │                  │         │                    │
+│   Frontend       │◄───────►│    Backend       │◄───────►│   LLM Providers    │
+│   React + Vite   │  HTTP   │  Flask + Python  │  HTTPS  │                    │
+│                  │         │                  │         │  • OpenAI API      │
+└──────────────────┘         └──────────────────┘         │  • Anthropic API   │
+      │                            │                       │  • Google Gemini   │
+      │                            │                       └────────────────────┐
+  Tailwind CSS             Config + Prompts                         │
+  Lucide Icons            Environment Vars                   Models & APIs
 
 
 Flow:
@@ -39,9 +39,10 @@ Flow:
 2. User selects style (or presses Enter for default)
 3. Frontend sends POST request to Flask backend
 4. Backend loads appropriate prompt from prompts.json
-5. Backend forwards request to LLM Gateway with streaming enabled
-6. Backend streams response back to frontend via SSE
-7. Frontend displays response word-by-word in real-time
+5. Backend determines provider (OpenAI/Anthropic/Google) based on model
+6. Backend routes request to appropriate API with streaming enabled
+7. Backend streams response back to frontend via SSE
+8. Frontend displays response word-by-word in real-time
 ```
 
 ## Project Structure
@@ -77,7 +78,10 @@ Flow:
 
 - **Node.js** 18+ and npm
 - **Python** 3.8+
-- **Iliad API Key** - Required for LLM access (internal users only)
+- **API Keys** (at least one required):
+  - **OpenAI API Key** - Get from https://platform.openai.com/api-keys
+  - **Anthropic API Key** - Get from https://console.anthropic.com/settings/keys
+  - **Google API Key** - Get from https://aistudio.google.com/app/apikey
 
 ## Quick Start
 
@@ -108,9 +112,13 @@ nano .env  # or use your preferred editor
 
 **Backend .env file:**
 ```bash
-# Iliad API Key
-ILIAD_API_KEY=your-api-key-here
+# API Keys (at least one required)
+OPENAI_API_KEY=your-openai-api-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+GOOGLE_API_KEY=your-google-api-key-here
 ```
+
+You only need to set the API keys for the provider(s) you plan to use.
 
 ### 3. Frontend Setup
 
@@ -178,27 +186,55 @@ Click the microphone button 🎙️ to use voice input:
 
 ### Backend Configuration (`backend/config.json`)
 
+Configure which models are available in the application:
+
 ```json
 {
-  "llm_gateway_url": "https://api-epic.ir-gateway.abbvienet.com/iliad/anthropic/v1",
-  "openai_gateway_url": "https://api-epic.ir-gateway.abbvienet.com/iliad/openai",
-  "default_model": "gpt-4.1",
+  "default_model": "gpt-4o-mini",
   "available_models": {
     "anthropic": [
       "claude-sonnet-4-5-20250929",
-      "claude-sonnet-4-20250514",
-      "claude-opus-4-20250514"
+      "claude-sonnet-4-20250522"
     ],
     "openai": [
-      "gpt-4.1",
-      "gpt-4.1-mini",
-      "gpt-5-global",
-      "o3-global",
-      "o4-mini-bal"
+      "gpt-5-nano",
+      "gpt-5-mini",
+      "gpt-5",
+      "o4-mini",
+      "o3-mini",
+      "gpt-4o-mini"
+    ],
+    "google": [
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash-lite"
     ]
   }
 }
 ```
+
+**Configuration Fields:**
+- **`default_model`** - The model selected by default in the UI
+- **`available_models`** - Models organized by provider (anthropic, openai, google)
+
+**Supported Models (Cost-Efficient 2025 Releases):**
+
+**Anthropic Claude 4 Series:**
+- **Claude Sonnet 4.5** (September 2025) - Best coding model, $3/$15 per 1M tokens
+- **Claude Sonnet 4** (May 2025) - Smart, efficient everyday model, $3/$15 per 1M tokens
+
+**OpenAI GPT-5 & O-Series:**
+- **GPT-5 Nano** (August 2025) - Ultra-fast & cheap, $0.05/$0.40 per 1M tokens, 400K context
+- **GPT-5 Mini** (August 2025) - Fast & cost-efficient, $0.25/$2 per 1M tokens, 400K context
+- **GPT-5** (August 2025) - Flagship model, $1.25/$10 per 1M tokens, 80% fewer errors
+- **o4-mini** (April 2025) - Fast reasoning, cost-efficient
+- **o3-mini** (January 2025) - Cost-efficient reasoning for coding, math, science
+- **GPT-4o Mini** - Efficient multimodal model
+
+**Google Gemini 2.x Series:**
+- **Gemini 2.5 Flash** (2025) - High quality + efficiency, 54% on SWE-Bench
+- **Gemini 2.5 Flash-Lite** (2025) - Fast, low-cost, high-performance
+- **Gemini 2.0 Flash-Lite** (2025) - Most cost-efficient Gemini model
 
 ### Customizing Prompts (`backend/prompts.json`)
 
@@ -223,8 +259,26 @@ Edit the prompts to change how each style works:
 
 **Backend (`.env`):**
 ```bash
-ILIAD_API_KEY=your-api-key-here
+# API Keys (at least one required)
+OPENAI_API_KEY=your-openai-api-key-here
+ANTHROPIC_API_KEY=your-anthropic-api-key-here
+GOOGLE_API_KEY=your-google-api-key-here
 ```
+
+**Setup Instructions:**
+
+1. **Get API Keys:**
+   - **OpenAI**: https://platform.openai.com/api-keys
+   - **Anthropic**: https://console.anthropic.com/settings/keys
+   - **Google**: https://aistudio.google.com/app/apikey
+
+2. **Add to `.env` file:**
+   - Set at least one API key for the provider(s) you want to use
+   - You can use one, two, or all three providers simultaneously
+
+3. **Configure Models:**
+   - Edit `config.json` to add/remove models
+   - Models are automatically routed to the correct provider based on their name
 
 **Frontend (`.env`):**
 ```bash
@@ -302,13 +356,15 @@ data: [DONE]
 - **Flask** - Python web framework
 - **Flask-CORS** - Cross-origin support
 - **python-dotenv** - Environment variable management
-- **requests** - HTTP client for LLM Gateway
+- **OpenAI SDK** - Direct OpenAI API integration
+- **Anthropic SDK** - Direct Anthropic API integration
+- **Google Generative AI SDK** - Direct Google Gemini API integration
 
 ## Troubleshooting
 
 ### Backend Issues
 
-**"ILIAD_API_KEY environment variable not set"**
+**"At least one API key must be set" error**
 ```bash
 # Make sure .env file exists in backend folder
 cd backend
@@ -317,7 +373,10 @@ ls -la .env
 # Check content
 cat .env
 
-# Should contain: ILIAD_API_KEY=your-key-here
+# Should contain at least one of:
+# OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=sk-ant-...
+# GOOGLE_API_KEY=...
 ```
 
 **Port 5000 already in use**
@@ -357,8 +416,9 @@ npm run dev
 
 **Models not loading**
 - Check browser console for errors (F12)
-- Verify API key is valid
+- Verify at least one API key is set and valid
 - Ensure backend is running and accessible
+- Check backend logs for initialization messages
 
 ### Streaming Issues
 
@@ -368,9 +428,10 @@ npm run dev
 - Try a different model
 
 **Slow responses**
-- Model may be large (try gpt-4.1-mini or haiku)
-- Network latency to LLM Gateway
+- Model may be large (try o4-mini, o3-mini, gpt-4o-mini, or gemini-2.5-flash-lite)
+- Network latency to API provider
 - Check timing metrics displayed in the UI
+- Reasoning models (o3, o4-mini, Claude Opus 4.1) take longer as they think through problems
 
 ## Development
 
@@ -393,6 +454,11 @@ python3 app.py     # Run with debug mode (auto-reload)
 # Test endpoints
 curl http://localhost:5000/api/models
 curl http://localhost:5000/api/styles
+
+# You should see initialization messages:
+# [INFO] OpenAI client initialized
+# [INFO] Anthropic client initialized
+# [INFO] Google Gemini configured
 ```
 
 ## Features in Detail
@@ -409,7 +475,8 @@ curl http://localhost:5000/api/styles
 
 ### Model Selection
 - Dynamically loaded from backend configuration
-- Categorized by provider (Anthropic/OpenAI)
+- Categorized by provider (Anthropic/OpenAI/Google)
+- Automatically routes to the correct API based on model name
 - Persisted in component state during session
 
 ### Error Handling

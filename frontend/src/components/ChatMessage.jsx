@@ -1,4 +1,4 @@
-import { Copy, Check, Clock, Zap } from 'lucide-react';
+import { Copy, Check, Clock, Zap, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
@@ -52,6 +52,8 @@ export default function ChatMessage({ message, onCopy }) {
           className={`rounded-2xl px-5 py-4 ${
             isUser
               ? 'bg-gradient-to-br from-slate-700 to-slate-800 text-slate-100 shadow-lg shadow-black/40 border border-slate-600/50'
+              : message.error
+              ? 'bg-red-950/30 text-red-200 border-2 border-red-800/50 backdrop-blur-sm shadow-lg shadow-red-900/20'
               : 'bg-slate-800/50 text-slate-100 border border-slate-700/50 backdrop-blur-sm'
           }`}
         >
@@ -59,26 +61,36 @@ export default function ChatMessage({ message, onCopy }) {
             <div className="h-4"></div>
           ) : (
             <>
-              <div className="prose prose-invert prose-slate max-w-none leading-relaxed
-                prose-headings:text-slate-100 prose-headings:font-semibold
-                prose-p:text-slate-200 prose-p:leading-relaxed
-                prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
-                prose-strong:text-slate-100 prose-strong:font-bold
-                prose-code:text-cyan-300 prose-code:bg-slate-900/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-                prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-slate-700/50 prose-pre:shadow-lg
-                prose-blockquote:border-l-cyan-500 prose-blockquote:text-slate-300
-                prose-ul:text-slate-200 prose-ol:text-slate-200
-                prose-li:text-slate-200 prose-li:marker:text-slate-400
-                prose-hr:border-slate-700
-              ">
-                {isUser ? (
-                  <div className="whitespace-pre-wrap">{message.content}</div>
-                ) : (
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
-                )}
-              </div>
+              {message.error ? (
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={24} className="text-red-400 flex-shrink-0 mt-1" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-red-300 mb-2">Error</div>
+                    <div className="text-red-200 leading-relaxed whitespace-pre-wrap">{message.content}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="prose prose-invert prose-slate max-w-none leading-relaxed
+                  prose-headings:text-slate-100 prose-headings:font-semibold
+                  prose-p:text-slate-200 prose-p:leading-relaxed
+                  prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
+                  prose-strong:text-slate-100 prose-strong:font-bold
+                  prose-code:text-cyan-300 prose-code:bg-slate-900/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                  prose-pre:bg-slate-900/80 prose-pre:border prose-pre:border-slate-700/50 prose-pre:shadow-lg
+                  prose-blockquote:border-l-cyan-500 prose-blockquote:text-slate-300
+                  prose-ul:text-slate-200 prose-ol:text-slate-200
+                  prose-li:text-slate-200 prose-li:marker:text-slate-400
+                  prose-hr:border-slate-700
+                ">
+                  {isUser ? (
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                  ) : (
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  )}
+                </div>
+              )}
 
-              {!isUser && message.content && !message.streaming && (
+              {!isUser && message.content && !message.streaming && !message.error && (
                 <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center justify-between gap-4 flex-wrap">
                   {/* Metadata Section */}
                   <div className="flex items-center gap-4 flex-wrap text-xs text-slate-400">
