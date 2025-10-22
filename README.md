@@ -253,29 +253,42 @@ pip install google-generativeai  # For Google Gemini models
 
 #### Gateway Mode Configuration
 
-When using `LLM_MODE=gateway`, create **`config.gateway.json`** (gitignored - for local use only):
+When using `LLM_MODE=gateway`, you need to create **`config.gateway.json`** (this file is gitignored for security):
+
+**Setup:**
+```bash
+cd backend
+
+# Copy the example template
+cp config.gateway.json.example config.gateway.json
+
+# Edit with your gateway URLs and model names
+nano config.gateway.json
+```
 
 **`backend/config.gateway.json`** (Gateway Mode):
 ```json
 {
   "llm_gateway_url": "https://your-gateway.com/anthropic/v1",
   "openai_gateway_url": "https://your-gateway.com/openai",
-  "default_model": "gpt-4.1",
+  "default_model": "claude-3-5-sonnet-20241022",
   "available_models": {
     "anthropic": [
-      "claude-sonnet-4-5-20250929",
-      "claude-sonnet-4-20250514"
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-haiku-20241022"
     ],
     "openai": [
-      "gpt-4.1",
-      "gpt-4.1-mini",
-      "o3-global"
+      "gpt-4-turbo",
+      "gpt-4o-mini"
     ]
   }
 }
 ```
 
-**Gateway mode does not require SDK installation** - it uses HTTP requests via the `requests` library.
+**Note:**
+- `config.gateway.json` is gitignored to keep your internal URLs/model names private
+- Use `config.gateway.json.example` as a template
+- Gateway mode does not require SDK installation - it uses HTTP requests via the `requests` library
 
 ### Customizing Prompts (`backend/prompts.json`)
 

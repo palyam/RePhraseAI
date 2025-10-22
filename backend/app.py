@@ -14,15 +14,19 @@ from llm_providers import get_provider
 app = Flask(__name__)
 CORS(app)
 
-# Load configuration with error handling
+# Load configuration based on mode
+llm_mode = os.getenv('LLM_MODE', 'direct').lower()
+config_file = 'config.gateway.json' if llm_mode == 'gateway' and os.path.exists('config.gateway.json') else 'config.json'
+
 try:
-    with open('config.json', 'r') as f:
+    with open(config_file, 'r') as f:
         config = json.load(f)
+    print(f"[INFO] Loaded configuration from: {config_file}")
 except FileNotFoundError:
-    print("[ERROR] config.json not found. Please create it with your API configuration.")
+    print(f"[ERROR] {config_file} not found. Please create it with your API configuration.")
     sys.exit(1)
 except json.JSONDecodeError as e:
-    print(f"[ERROR] Invalid JSON in config.json: {e}")
+    print(f"[ERROR] Invalid JSON in {config_file}: {e}")
     sys.exit(1)
 
 # Load prompts with error handling

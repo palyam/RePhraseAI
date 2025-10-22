@@ -1,4 +1,6 @@
 {
+  "llm_gateway_url": "https://your-gateway.com/anthropic/v1",
+  "openai_gateway_url": "https://your-gateway.com/openai",
   "default_model": "claude-3-5-sonnet-20241022",
   "available_models": {
     "anthropic": [
@@ -7,12 +9,7 @@
     ],
     "openai": [
       "gpt-4-turbo",
-      "gpt-4o",
       "gpt-4o-mini"
-    ],
-    "google": [
-      "gemini-1.5-pro",
-      "gemini-1.5-flash"
     ]
   }
 }
