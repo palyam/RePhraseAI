@@ -1,4 +1,13 @@
+# Core dependencies (always required)
 Flask==3.0.0
 Flask-CORS==4.0.0
-requests==2.31.0
 python-dotenv==1.0.0
+
+# HTTP client for gateway mode
+requests==2.31.0
+
+# Direct API SDKs (optional - only needed for direct mode)
+# Uncomment the providers you want to use:
+# openai>=1.0.0
+# anthropic>=0.18.0
+# google-generativeai>=0.3.0

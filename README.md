@@ -17,32 +17,45 @@ RePhraseAI is an intelligent writing assistant that helps you rephrase text in v
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        RePhraseAI                           │
-└─────────────────────────────────────────────────────────────┘
+RePhraseAI supports **two modes** of LLM access:
 
+### Mode 1: Direct API Access (Default)
+Best for unrestricted environments with direct internet access to LLM providers.
+
+```
+┌──────────────────┐         ┌──────────────────┐         ┌────────────────────┐
+│                  │         │                  │         │                    │
+│   Frontend       │◄───────►│    Backend       │◄───────►│   LLM Providers    │
+│   React + Vite   │  HTTP   │  Flask + Python  │  HTTPS  │                    │
+│                  │         │                  │         │  • OpenAI API      │
+└──────────────────┘         └──────────────────┘         │  • Anthropic API   │
+                                                           │  • Google Gemini   │
+                                                           └────────────────────┘
+```
+
+### Mode 2: Gateway Access
+For restricted corporate environments where direct API access is blocked.
+
+```
 ┌──────────────────┐         ┌──────────────────┐         ┌──────────────────┐
 │                  │         │                  │         │                  │
 │   Frontend       │◄───────►│    Backend       │◄───────►│   LLM Gateway    │
 │   React + Vite   │  HTTP   │  Flask + Python  │  HTTPS  │   (Iliad API)    │
 │                  │         │                  │         │                  │
 └──────────────────┘         └──────────────────┘         └──────────────────┘
-      │                            │                             │
-      │                            │                             │
-  Tailwind CSS             Config + Prompts              Anthropic/OpenAI
-  Lucide Icons            Environment Vars                   Models
+```
 
+**Switching Modes:**
+Set `LLM_MODE=direct` or `LLM_MODE=gateway` in your `.env` file.
 
-Flow:
+**Flow:**
 1. User types text in React frontend
 2. User selects style (or presses Enter for default)
 3. Frontend sends POST request to Flask backend
 4. Backend loads appropriate prompt from prompts.json
-5. Backend forwards request to LLM Gateway with streaming enabled
+5. Backend routes request to LLM provider (direct or via gateway)
 6. Backend streams response back to frontend via SSE
 7. Frontend displays response word-by-word in real-time
-```
 
 ## Project Structure
 
@@ -63,9 +76,15 @@ Flow:
 │
 ├── /backend                    # Flask backend server
 │   ├── app.py                      # Main Flask application
-│   ├── config.json                 # LLM Gateway configuration
+│   ├── /llm_providers              # Provider abstraction layer
+│   │   ├── __init__.py             # Provider factory
+│   │   ├── base.py                 # Abstract base provider
+│   │   ├── direct_provider.py     # Direct API access (OpenAI/Anthropic/Google)
+│   │   └── gateway_provider.py    # Gateway access (Iliad/corporate proxy)
+│   ├── config.json                 # Base configuration (models, prompts)
+│   ├── config.gateway.json         # Gateway-specific config (gitignored)
 │   ├── prompts.json                # System prompts for each style
-│   ├── .env                        # Backend environment variables (API key)
+│   ├── .env                        # Backend environment variables (gitignored)
 │   ├── .env.example                # Environment template
 │   ├── requirements.txt            # Python dependencies
 │   └── venv/                       # Virtual environment (created)
@@ -77,7 +96,9 @@ Flow:
 
 - **Node.js** 18+ and npm
 - **Python** 3.8+
-- **Iliad API Key** - Required for LLM access (internal users only)
+- **API Keys** (depending on mode):
+  - **Direct Mode**: At least one of OpenAI, Anthropic, or Google API key
+  - **Gateway Mode**: Iliad API key (or your corporate gateway key)
 
 ## Quick Start
 
@@ -106,10 +127,26 @@ cp .env.example .env
 nano .env  # or use your preferred editor
 ```
 
-**Backend .env file:**
+**Backend .env file - Choose your mode:**
+
+**Option 1: Direct API Access (Default)**
 ```bash
-# Iliad API Key
-ILIAD_API_KEY=your-api-key-here
+# LLM Mode
+LLM_MODE=direct
+
+# At least one API key required
+OPENAI_API_KEY=sk-your-openai-key-here
+# ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+# GOOGLE_API_KEY=your-google-api-key-here
+```
+
+**Option 2: Gateway Access (Corporate/Restricted Environments)**
+```bash
+# LLM Mode
+LLM_MODE=gateway
+
+# Gateway API Key
+ILIAD_API_KEY=your-iliad-api-key-here
 ```
 
 ### 3. Frontend Setup
@@ -176,29 +213,69 @@ Click the microphone button 🎙️ to use voice input:
 
 ## Configuration
 
-### Backend Configuration (`backend/config.json`)
+### Mode-Specific Setup
 
+#### Direct Mode Configuration
+
+When using `LLM_MODE=direct`, the backend uses **`config.json`** for model configuration:
+
+**`backend/config.json`** (Direct Mode):
 ```json
 {
-  "llm_gateway_url": "https://api-epic.ir-gateway.abbvienet.com/iliad/anthropic/v1",
-  "openai_gateway_url": "https://api-epic.ir-gateway.abbvienet.com/iliad/openai",
-  "default_model": "gpt-4.1",
+  "default_model": "claude-3-5-sonnet-20241022",
   "available_models": {
     "anthropic": [
-      "claude-sonnet-4-5-20250929",
-      "claude-sonnet-4-20250514",
-      "claude-opus-4-20250514"
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-haiku-20241022"
     ],
     "openai": [
-      "gpt-4.1",
-      "gpt-4.1-mini",
-      "gpt-5-global",
-      "o3-global",
-      "o4-mini-bal"
+      "gpt-4-turbo",
+      "gpt-4o-mini"
+    ],
+    "google": [
+      "gemini-1.5-pro",
+      "gemini-1.5-flash"
     ]
   }
 }
 ```
+
+**Installing SDKs for Direct Mode:**
+```bash
+cd backend
+source venv/bin/activate
+
+# Install the providers you want to use:
+pip install openai          # For OpenAI models
+pip install anthropic       # For Anthropic models
+pip install google-generativeai  # For Google Gemini models
+```
+
+#### Gateway Mode Configuration
+
+When using `LLM_MODE=gateway`, create **`config.gateway.json`** (gitignored - for local use only):
+
+**`backend/config.gateway.json`** (Gateway Mode):
+```json
+{
+  "llm_gateway_url": "https://your-gateway.com/anthropic/v1",
+  "openai_gateway_url": "https://your-gateway.com/openai",
+  "default_model": "gpt-4.1",
+  "available_models": {
+    "anthropic": [
+      "claude-sonnet-4-5-20250929",
+      "claude-sonnet-4-20250514"
+    ],
+    "openai": [
+      "gpt-4.1",
+      "gpt-4.1-mini",
+      "o3-global"
+    ]
+  }
+}
+```
+
+**Gateway mode does not require SDK installation** - it uses HTTP requests via the `requests` library.
 
 ### Customizing Prompts (`backend/prompts.json`)
 
