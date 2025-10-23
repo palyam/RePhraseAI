@@ -4,12 +4,21 @@ AI-powered text rephrasing tool with real-time streaming. Transform text into di
 
 ## Features
 
-- 5 writing styles (Default, Professional, Casual, Business, Creative)
-- Multiple AI models (GPT, Claude, Gemini)
-- Real-time streaming responses
-- Voice input support
-- Optional custom instructions
-- Response timing metrics
+### Core Features
+- **6 Writing Styles**: Default, Professional, Casual, Business Casual, Creative, Concise
+- **Multiple AI Models**: GPT-4, Claude, Gemini with easy model switching
+- **Real-time Streaming**: See responses as they're generated
+- **Voice Input**: Dictate your text instead of typing
+- **Custom Instructions**: Add context or specific requirements to any request
+- **Performance Metrics**: Track time-to-first-token and total response time
+
+### Settings & Configuration
+- **UI-Based Configuration**: Manage all settings through an intuitive web interface
+- **API Key Management**: Securely store and manage API keys with masking
+- **Model Configuration**: Add, remove, and set default models per provider
+- **Custom Style Editor**: Create and edit custom rephrasing styles with inline form
+- **Light/Dark Theme**: Toggle between themes with system preference support
+- **Dual Mode Support**: Switch between Direct API and Gateway modes
 
 ## Quick Start
 
@@ -91,7 +100,28 @@ Open `http://localhost:5847`
 
 ## Configuration
 
-### Direct Mode (Default)
+### Settings UI (Recommended)
+
+The easiest way to configure RePhraseAI is through the Settings interface:
+
+1. Open the application at http://localhost:5847
+2. Click the "Settings" button in the top right
+3. Navigate through the tabs:
+   - **LLM & API Keys**: Choose between Direct/Gateway mode and manage API keys
+   - **Models**: Add/remove models and set your default model using radio buttons
+   - **Styles**: Create and customize rephrasing styles with the inline editor
+
+**Features:**
+- API keys are masked for security (shows only last 4 characters)
+- Test API key connectivity before saving
+- Automatic backup of configuration before changes
+- Changes persist across restarts
+
+### Manual Configuration
+
+Alternatively, you can configure via files:
+
+#### Direct Mode (Default)
 
 Direct connection to LLM provider APIs.
 
@@ -150,28 +180,50 @@ GATEWAY_API_KEY=your-gateway-key
 
 ## API Endpoints
 
-- `GET /api/models` - Available models
-- `GET /api/styles` - Available styles
-- `POST /api/rephrase` - Stream rephrased text (SSE)
+### Main Endpoints
+- `GET /api/models` - Get available models
+- `GET /api/styles` - Get available styles
+- `POST /api/rephrase` - Stream rephrased text (Server-Sent Events)
+
+### Configuration Endpoints
+- `GET /api/config` - Get current configuration (with masked API keys)
+- `POST /api/config` - Save configuration changes
+- `POST /api/config/test-key` - Test API key validity
 
 ## Project Structure
 
 ```
 /RePhraseAI
-├── /frontend              # React + Vite
-│   ├── /src/components
-│   │   ├── ChatMessage.jsx
-│   │   ├── InputBox.jsx
-│   │   ├── ModelSelector.jsx
-│   │   └── StyleButtons.jsx
+├── docker-compose.yml      # Docker orchestration
+├── start.sh / start.bat    # Quick start scripts
+├── /frontend               # React 19 + Vite
+│   ├── Dockerfile
+│   ├── /src
+│   │   ├── /components
+│   │   │   ├── ChatMessage.jsx
+│   │   │   ├── InputBox.jsx
+│   │   │   ├── ModelSelector.jsx
+│   │   │   ├── StyleButtons.jsx
+│   │   │   ├── Settings.jsx
+│   │   │   ├── LLMSettings.jsx
+│   │   │   ├── ModelSettings.jsx
+│   │   │   └── StyleSettings.jsx
+│   │   ├── /contexts
+│   │   │   └── ThemeContext.jsx
+│   │   ├── App.jsx
+│   │   └── main.jsx
 │   └── package.json
-├── /backend               # Flask + Python
+├── /backend                # Flask + Python
+│   ├── Dockerfile
 │   ├── app.py
+│   ├── config_manager.py   # Configuration management
 │   ├── /llm_providers
 │   │   ├── direct_provider.py
 │   │   └── gateway_provider.py
-│   ├── config.json
-│   ├── prompts.json
+│   ├── config.json         # Direct mode config
+│   ├── config.gateway.json # Gateway mode config
+│   ├── prompts.json        # Style definitions
+│   ├── .env                # API keys & secrets
 │   └── requirements.txt
 └── README.md
 ```
