@@ -99,19 +99,44 @@ def get_styles():
 
 @app.route('/api/rephrase', methods=['POST'])
 def rephrase():
-    """Streaming endpoint for text rephrasing"""
+    """Streaming endpoint for text rephrasing - supports single or multiple styles"""
     data = request.json
     text = data.get('text', '')
-    style = data.get('style', 'default')
     model = data.get('model', DEFAULT_MODEL)
+    additional_instructions = data.get('additional_instructions', '').strip()
 
-    # Get system prompt for the selected style
-    style_data = prompts.get(style, prompts['default'])
-    system_prompt = style_data['prompt']
+    # Support both single style and multiple styles
+    style = data.get('style')
+    styles = data.get('styles', [])
+
+    # If single style provided, convert to list
+    if style and not styles:
+        styles = [style]
+    elif not styles:
+        styles = ['default']
 
     def generate():
-        # Delegate to the provider
-        yield from llm_provider.stream_response(model, system_prompt, text)
+        # Process each selected style
+        for idx, current_style in enumerate(styles):
+            # Get system prompt for the selected style
+            style_data = prompts.get(current_style, prompts['default'])
+            system_prompt = style_data['prompt']
+
+            # Append additional instructions if provided
+            if additional_instructions:
+                system_prompt += f"\n\nAdditional Instructions: {additional_instructions}"
+
+            # Send style marker if multiple styles
+            if len(styles) > 1:
+                style_label = style_data.get('label', current_style)
+                yield f"data: {json.dumps({'style_start': current_style, 'style_label': style_label, 'style_index': idx})}\n\n"
+
+            # Stream the response for this style
+            yield from llm_provider.stream_response(model, system_prompt, text)
+
+            # Send style end marker if multiple styles
+            if len(styles) > 1:
+                yield f"data: {json.dumps({'style_end': current_style, 'style_index': idx})}\n\n"
 
     return Response(
         stream_with_context(generate()),

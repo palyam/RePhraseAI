@@ -21,9 +21,14 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (text) => {
+  const handleSendMessage = (text, additionalInstructions = '') => {
     // Add user message
-    const userMessage = { role: 'user', content: text };
+    const userMessage = {
+      role: 'user',
+      content: text,
+      additionalInstructions: additionalInstructions || undefined,
+      id: `user-${Date.now()}` // Unique stable ID
+    };
     setMessages(prev => [...prev, userMessage]);
     setCurrentUserText(text);
   };
@@ -33,22 +38,41 @@ function App() {
     setCurrentUserText('');
   };
 
-  const handleStyleSelect = async (style, text) => {
+  const handleStyleSelect = async (styleOrStyles, text, additionalInstructions = '') => {
     setIsStreaming(true);
+    setCurrentUserText(text);
+
+    // Convert to array if single style
+    const stylesArray = Array.isArray(styleOrStyles) ? styleOrStyles : [styleOrStyles];
 
     // Track timing metrics
     const startTime = performance.now();
     let firstTokenTime = null;
 
-    // Add placeholder for AI response
-    const aiMessageIndex = messages.length + 1;
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: '',
-      streaming: true,
-      style: style,
-      model: selectedModel
-    }]);
+    // Add user message first, then AI response placeholders
+    const userMessage = {
+      role: 'user',
+      content: text,
+      additionalInstructions: additionalInstructions || undefined,
+      id: `user-${Date.now()}`
+    };
+
+    const newMessages = [...messages, userMessage];
+    const aiMessageStartIndex = newMessages.length; // Start after user message
+    const messageId = Date.now() + 1; // Unique ID for this batch of AI messages
+
+    stylesArray.forEach((style, idx) => {
+      newMessages.push({
+        role: 'assistant',
+        content: '',
+        streaming: true,
+        style: style,
+        model: selectedModel,
+        styleIndex: idx,
+        id: `${messageId}-${idx}` // Unique stable ID
+      });
+    });
+    setMessages(newMessages);
 
     try {
       const response = await fetch(`${API_URL}/api/rephrase`, {
@@ -58,8 +82,9 @@ function App() {
         },
         body: JSON.stringify({
           text: text,
-          style: style,
+          styles: stylesArray,
           model: selectedModel,
+          additional_instructions: additionalInstructions || undefined,
         }),
       });
 
@@ -70,7 +95,9 @@ function App() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let accumulatedContent = '';
+      const accumulatedContents = stylesArray.map(() => '');
+      let currentStyleIndex = 0;
+      let streamComplete = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -83,28 +110,37 @@ function App() {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data.trim() === '[DONE]') {
+              streamComplete = true;
               break;
             }
 
             try {
               const parsed = JSON.parse(data);
-              if (parsed.content) {
+
+              // Handle style markers for multiple styles
+              if (parsed.style_start) {
+                currentStyleIndex = parsed.style_index || 0;
+                accumulatedContents[currentStyleIndex] = '';
+              } else if (parsed.style_end) {
+                // Style complete, do nothing special
+              } else if (parsed.content) {
                 // Capture first token time
                 if (!firstTokenTime) {
                   firstTokenTime = performance.now();
                 }
 
-                accumulatedContent += parsed.content;
+                accumulatedContents[currentStyleIndex] += parsed.content;
                 setMessages(prev => {
                   const newMessages = [...prev];
-                  newMessages[aiMessageIndex] = {
-                    role: 'assistant',
-                    content: accumulatedContent,
-                    streaming: true,
-                    style: style,
-                    model: selectedModel,
-                    timeToFirstToken: firstTokenTime ? Math.round(firstTokenTime - startTime) : null
-                  };
+                  const messageIndex = aiMessageStartIndex + currentStyleIndex;
+                  if (newMessages[messageIndex]) {
+                    newMessages[messageIndex] = {
+                      ...newMessages[messageIndex],
+                      content: accumulatedContents[currentStyleIndex],
+                      streaming: true,
+                      timeToFirstToken: firstTokenTime ? Math.round(firstTokenTime - startTime) : null
+                    };
+                  }
                   return newMessages;
                 });
               }
@@ -113,20 +149,26 @@ function App() {
             }
           }
         }
+
+        // Break outer loop if stream is complete
+        if (streamComplete) break;
       }
 
       // Calculate total response time
       const endTime = performance.now();
       const totalTime = Math.round(endTime - startTime);
 
-      // Mark streaming as complete with timing info
+      // Mark all style responses as complete with timing info
       setMessages(prev => {
         const newMessages = [...prev];
-        if (newMessages[aiMessageIndex]) {
-          newMessages[aiMessageIndex].streaming = false;
-          newMessages[aiMessageIndex].totalTime = totalTime;
-          newMessages[aiMessageIndex].timeToFirstToken = firstTokenTime ? Math.round(firstTokenTime - startTime) : null;
-        }
+        stylesArray.forEach((style, idx) => {
+          const messageIndex = aiMessageStartIndex + idx;
+          if (newMessages[messageIndex]) {
+            newMessages[messageIndex].streaming = false;
+            newMessages[messageIndex].totalTime = totalTime;
+            newMessages[messageIndex].timeToFirstToken = firstTokenTime ? Math.round(firstTokenTime - startTime) : null;
+          }
+        });
         return newMessages;
       });
 
@@ -149,12 +191,18 @@ function App() {
 
       setMessages(prev => {
         const newMessages = [...prev];
-        newMessages[aiMessageIndex] = {
-          role: 'assistant',
-          content: errorMessage,
-          streaming: false,
-          error: true
-        };
+        // Mark all placeholders as error
+        stylesArray.forEach((style, idx) => {
+          const messageIndex = aiMessageStartIndex + idx;
+          if (newMessages[messageIndex]) {
+            newMessages[messageIndex] = {
+              role: 'assistant',
+              content: errorMessage,
+              streaming: false,
+              error: true
+            };
+          }
+        });
         return newMessages;
       });
     } finally {
@@ -198,8 +246,8 @@ function App() {
             </div>
           ) : (
             <>
-              {messages.map((message, index) => (
-                <ChatMessage key={index} message={message} />
+              {messages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
               ))}
             </>
           )}

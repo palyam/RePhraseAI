@@ -1,5 +1,5 @@
 """
-Gateway LLM Provider - Access LLMs through API Gateway (e.g., Iliad)
+Gateway LLM Provider - Access LLMs through custom API Gateway
 This is for restricted environments where direct API access is not allowed.
 """
 
@@ -12,7 +12,7 @@ from .base import BaseLLMProvider
 class GatewayProvider(BaseLLMProvider):
     """
     Gateway-based provider for environments with restricted API access.
-    Uses an API gateway (like Iliad) to route requests to LLM providers.
+    Uses a custom API gateway to route requests to LLM providers.
     """
 
     def __init__(self):
@@ -21,18 +21,18 @@ class GatewayProvider(BaseLLMProvider):
         self.gateway_config = self._load_gateway_config()
 
         # Get API key
-        self.api_key = os.getenv('ILIAD_API_KEY')
+        self.api_key = os.getenv('GATEWAY_API_KEY')
         if not self.api_key:
-            raise ValueError("ILIAD_API_KEY environment variable not set")
+            raise ValueError("GATEWAY_API_KEY environment variable not set")
 
         # Gateway URLs
         self.anthropic_gateway_url = self.gateway_config.get(
             'llm_gateway_url',
-            os.getenv('ILIAD_ANTHROPIC_GATEWAY_URL', '')
+            os.getenv('GATEWAY_ANTHROPIC_URL', '')
         )
         self.openai_gateway_url = self.gateway_config.get(
             'openai_gateway_url',
-            os.getenv('ILIAD_OPENAI_GATEWAY_URL', '')
+            os.getenv('GATEWAY_OPENAI_URL', '')
         )
 
         print(f"[INFO] Gateway Provider initialized")
@@ -178,6 +178,7 @@ class GatewayProvider(BaseLLMProvider):
                 return
 
             # Parse streaming response
+            stream_ended = False
             for line in response.iter_lines():
                 if line:
                     line_text = line.decode('utf-8')
@@ -185,11 +186,13 @@ class GatewayProvider(BaseLLMProvider):
                         data_str = line_text[6:]
                         if data_str.strip() == '[DONE]':
                             yield f"data: [DONE]\n\n"
+                            stream_ended = True
                             break
 
                         try:
                             chunk = json.loads(data_str)
                             content = None
+                            finish_reason = None
 
                             # Handle Anthropic format
                             if 'type' in chunk:
@@ -198,16 +201,31 @@ class GatewayProvider(BaseLLMProvider):
                                     content = delta.get('text', '')
                                 elif chunk['type'] == 'message_stop':
                                     yield f"data: [DONE]\n\n"
+                                    stream_ended = True
                                     break
                             # Handle OpenAI format
                             elif 'choices' in chunk and len(chunk['choices']) > 0:
                                 delta = chunk['choices'][0].get('delta', {})
                                 content = delta.get('content', '')
+                                # Check for finish_reason to detect end of stream
+                                finish_reason = chunk['choices'][0].get('finish_reason')
+                                if finish_reason:
+                                    stream_ended = True
+                                    # Send any remaining content first
+                                    if content:
+                                        yield f"data: {json.dumps({'content': content})}\n\n"
+                                    # Then send DONE
+                                    yield f"data: [DONE]\n\n"
+                                    break
 
-                            if content:
+                            if content and not finish_reason:
                                 yield f"data: {json.dumps({'content': content})}\n\n"
                         except json.JSONDecodeError:
                             continue
+
+            # Send DONE marker if not already sent
+            if not stream_ended:
+                yield f"data: [DONE]\n\n"
 
         except requests.exceptions.Timeout:
             error_data = {'error': 'Request timed out.', 'error_code': 'TIMEOUT'}

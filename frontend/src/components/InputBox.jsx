@@ -4,6 +4,7 @@ import StyleButtons from './StyleButtons';
 
 export default function InputBox({ onSend, disabled, onStyleSelect, onClear, hasMessages }) {
   const [text, setText] = useState('');
+  const [additionalInstructions, setAdditionalInstructions] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
@@ -68,14 +69,15 @@ export default function InputBox({ onSend, disabled, onStyleSelect, onClear, has
     e.preventDefault();
     if (text.trim() && !disabled) {
       const userText = text;
+      const instructions = additionalInstructions;
       if (isListening) {
         recognitionRef.current.stop();
         setIsListening(false);
       }
-      onSend(userText);
       setText('');
+      setAdditionalInstructions('');
       // Use 'default' style when Enter is pressed without clicking a style button
-      onStyleSelect('default', userText);
+      onStyleSelect('default', userText, instructions);
     }
   };
 
@@ -93,7 +95,7 @@ export default function InputBox({ onSend, disabled, onStyleSelect, onClear, has
     <form onSubmit={handleSubmit} className="border-t border-slate-700/50 bg-slate-900/95 backdrop-blur-xl p-4 shadow-lg shadow-black/20">
       <div className="max-w-5xl mx-auto">
         <div className="flex gap-3 items-end">
-          <div className="flex-1 relative">
+          <div className="flex-1 relative space-y-2">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -125,22 +127,54 @@ export default function InputBox({ onSend, disabled, onStyleSelect, onClear, has
                 e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
               }}
             />
+
+            {/* Additional Instructions Input */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <span className="text-xs font-medium text-slate-400">✨ Custom Instructions (optional)</span>
+                <span className="text-xs text-slate-500">{additionalInstructions.length}/500</span>
+              </div>
+              <textarea
+                value={additionalInstructions}
+                onChange={(e) => setAdditionalInstructions(e.target.value)}
+                placeholder="Add any additional prompt instructions..."
+                disabled={disabled}
+                maxLength={500}
+                rows={2}
+                className="
+                  w-full px-4 py-2.5
+                  border rounded-xl
+                  focus:outline-none focus:ring-2
+                  disabled:bg-slate-800/50 disabled:cursor-not-allowed
+                  resize-none
+                  text-sm text-slate-100 placeholder-slate-500
+                  transition-all duration-200
+                  border-slate-700/70 focus:border-cyan-500/50 focus:ring-cyan-900/20 bg-slate-800/70
+                "
+                style={{
+                  minHeight: '60px',
+                  maxHeight: '100px',
+                }}
+              />
+            </div>
+
             {/* Quick style buttons and char count */}
             <div className="mt-2 px-1 space-y-2">
               {/* Always show compact buttons when there's text */}
               {text.trim() && (
                 <StyleButtons
-                  onStyleSelect={(style) => {
-                    // Send the message and trigger style selection
+                  onStyleSelect={(styleOrStyles) => {
+                    // Trigger style selection (which now handles adding the user message)
                     if (text.trim() && !disabled) {
                       const userText = text;
+                      const instructions = additionalInstructions;
                       if (isListening) {
                         recognitionRef.current.stop();
                         setIsListening(false);
                       }
-                      onSend(userText);
                       setText('');
-                      onStyleSelect(style, userText);
+                      setAdditionalInstructions('');
+                      onStyleSelect(styleOrStyles, userText, instructions);
                     }
                   }}
                   disabled={disabled}
