@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: rephrase-backend
+    ports:
+      - "5001:5000"  # Map host port 5001 to container port 5000
+    environment:
+      # Load from .env file in project root
+      - LLM_MODE=${LLM_MODE:-gateway}
+      - GATEWAY_API_KEY=${GATEWAY_API_KEY}
+      - ILIAD_API_KEY=${ILIAD_API_KEY}
+      # For direct mode (if using)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    volumes:
+      - ./backend:/app
+      - /app/venv  # Exclude venv from volume mount
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    container_name: rephrase-frontend
+    ports:
+      - "5848:5847"  # Map host port 5848 to container port 5847
+    environment:
+      - VITE_API_URL=http://localhost:5001  # Point to Docker backend on host port 5001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Exclude node_modules from volume mount
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 // Get API URL from environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export default function StyleButtons({ onStyleSelect, disabled, compact = false }) {
+export default function StyleButtons({ onStyleSelect, disabled, compact = false, theme }) {
   const [styles, setStyles] = useState([]);
   const [selectedStyles, setSelectedStyles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,8 +88,12 @@ export default function StyleButtons({ onStyleSelect, disabled, compact = false 
                   flex items-center gap-1.5
                   shadow-sm
                   ${isSelected
-                    ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-400 text-white shadow-cyan-500/40'
-                    : 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600/50 text-slate-200 hover:from-slate-600 hover:to-slate-700 hover:border-slate-500'
+                    ? theme === 'dark'
+                      ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-400 text-white shadow-cyan-500/40'
+                      : 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-400 text-white shadow-blue-300/40'
+                    : theme === 'dark'
+                      ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600/50 text-slate-200 hover:from-slate-600 hover:to-slate-700 hover:border-slate-500'
+                      : 'bg-gradient-to-br from-blue-100 to-blue-200 border-blue-300 text-blue-700 hover:from-blue-200 hover:to-blue-300 hover:border-blue-400'
                   }
                 `}
               >
@@ -104,17 +108,19 @@ export default function StyleButtons({ onStyleSelect, disabled, compact = false 
           <button
             onClick={handleApply}
             disabled={disabled}
-            className="
+            className={`
               w-full px-4 py-2 rounded-lg
-              bg-gradient-to-br from-cyan-600 to-cyan-700
-              border-2 border-cyan-400
+              border-2
               text-white text-sm font-medium
-              hover:from-cyan-500 hover:to-cyan-600
               active:scale-95
               transition-all duration-200
               disabled:opacity-40 disabled:cursor-not-allowed
-              shadow-lg shadow-cyan-500/30
-            "
+              shadow-lg
+              ${theme === 'dark'
+                ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-400 hover:from-cyan-500 hover:to-cyan-600 shadow-cyan-500/30'
+                : 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-400 hover:from-blue-600 hover:to-blue-700 shadow-blue-300/30'
+              }
+            `}
           >
             Apply {selectedStyles.length} Style{selectedStyles.length > 1 ? 's' : ''}
           </button>
@@ -126,11 +132,17 @@ export default function StyleButtons({ onStyleSelect, disabled, compact = false 
   return (
     <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="flex items-center gap-2">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
-        <p className="text-sm font-semibold text-slate-300 px-3">
+        <div className={`h-px flex-1 bg-gradient-to-r from-transparent to-transparent ${
+          theme === 'dark' ? 'via-slate-700' : 'via-blue-300'
+        }`}></div>
+        <p className={`text-sm font-semibold px-3 ${
+          theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+        }`}>
           {selectedStyles.length > 0 ? `${selectedStyles.length} style${selectedStyles.length > 1 ? 's' : ''} selected` : 'Choose a style'}
         </p>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+        <div className={`h-px flex-1 bg-gradient-to-r from-transparent to-transparent ${
+          theme === 'dark' ? 'via-slate-700' : 'via-blue-300'
+        }`}></div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {styles.map((style, index) => {
@@ -145,7 +157,7 @@ export default function StyleButtons({ onStyleSelect, disabled, compact = false 
               }}
               className={`
                 group relative
-                text-slate-100 px-4 py-3 rounded-xl
+                px-4 py-3 rounded-xl
                 font-medium transition-all duration-200
                 disabled:opacity-50 disabled:cursor-not-allowed
                 hover:scale-[1.02] hover:shadow-lg
@@ -155,13 +167,19 @@ export default function StyleButtons({ onStyleSelect, disabled, compact = false 
                 border-2
                 shadow-md
                 ${isSelected
-                  ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-400 shadow-cyan-500/40'
-                  : 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600/50 hover:from-slate-600 hover:to-slate-700'
+                  ? theme === 'dark'
+                    ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-400 shadow-cyan-500/40 text-white'
+                    : 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-400 shadow-blue-300/40 text-white'
+                  : theme === 'dark'
+                    ? 'bg-gradient-to-br from-slate-700 to-slate-800 border-slate-600/50 hover:from-slate-600 hover:to-slate-700 text-slate-100'
+                    : 'bg-gradient-to-br from-blue-100 to-blue-200 border-blue-300 hover:from-blue-200 hover:to-blue-300 text-blue-700'
                 }
               `}
             >
               {isSelected && (
-                <span className="absolute top-1 right-1 text-xs bg-white text-cyan-600 rounded-full w-5 h-5 flex items-center justify-center font-bold">✓</span>
+                <span className={`absolute top-1 right-1 text-xs bg-white rounded-full w-5 h-5 flex items-center justify-center font-bold ${
+                  theme === 'dark' ? 'text-cyan-600' : 'text-blue-600'
+                }`}>✓</span>
               )}
               <span className="text-2xl group-hover:scale-110 transition-transform duration-200">{style.icon}</span>
               <span className="text-sm font-semibold">{style.label}</span>
@@ -173,18 +191,19 @@ export default function StyleButtons({ onStyleSelect, disabled, compact = false 
         <button
           onClick={handleApply}
           disabled={disabled}
-          className="
+          className={`
             w-full px-6 py-3 rounded-xl
-            bg-gradient-to-br from-cyan-600 to-cyan-700
-            border-2 border-cyan-400
+            border-2
             text-white font-semibold
-            hover:from-cyan-500 hover:to-cyan-600
-            hover:shadow-xl hover:shadow-cyan-500/40
             active:scale-95
             transition-all duration-200
             disabled:opacity-40 disabled:cursor-not-allowed
             shadow-lg
-          "
+            ${theme === 'dark'
+              ? 'bg-gradient-to-br from-cyan-600 to-cyan-700 border-cyan-400 hover:from-cyan-500 hover:to-cyan-600 hover:shadow-xl hover:shadow-cyan-500/40'
+              : 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-400 hover:from-blue-600 hover:to-blue-700 hover:shadow-xl hover:shadow-blue-400/40'
+            }
+          `}
         >
           Apply {selectedStyles.length} Style{selectedStyles.length > 1 ? 's' : ''}
         </button>

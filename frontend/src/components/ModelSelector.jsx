@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 // Get API URL from environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export default function ModelSelector({ selectedModel, onModelChange }) {
+export default function ModelSelector({ selectedModel, onModelChange, theme }) {
   const [models, setModels] = useState([]);
   const [modelCategories, setModelCategories] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function ModelSelector({ selectedModel, onModelChange }) {
 
   if (loading) {
     return (
-      <div className="text-sm text-gray-500">Loading models...</div>
+      <div className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Loading models...</div>
     );
   }
 
@@ -68,19 +68,22 @@ export default function ModelSelector({ selectedModel, onModelChange }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm font-medium text-slate-400">Model:</span>
+      <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Model:</span>
       <select
         value={selectedModel}
         onChange={(e) => onModelChange(e.target.value)}
-        className="
+        className={`
           px-4 py-2 pr-10
-          border-2 border-slate-700 rounded-xl
-          focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-900/30
-          bg-slate-800 text-slate-200 font-medium text-sm
+          border-2 rounded-xl
+          focus:outline-none focus:ring-4
+          font-medium text-sm
           cursor-pointer
           transition-all duration-200
-          hover:border-slate-600 hover:shadow-lg hover:shadow-black/20
-        "
+          ${theme === 'dark'
+            ? 'border-slate-700 focus:border-cyan-500 focus:ring-cyan-900/30 bg-slate-800 text-slate-200 hover:border-slate-600 hover:shadow-lg hover:shadow-black/20'
+            : 'border-blue-200 focus:border-blue-500 focus:ring-blue-200/50 bg-white text-gray-800 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-100/20'
+          }
+        `}
       >
         {modelCategories ? (
           <>

@@ -10,6 +10,7 @@ load_dotenv()
 
 # Import provider factory
 from llm_providers import get_provider
+from config_manager import ConfigManager
 
 app = Flask(__name__)
 CORS(app)
@@ -52,6 +53,9 @@ except Exception as e:
     print(f"[ERROR] Failed to initialize LLM provider: {e}")
     print("[ERROR] Please check your environment configuration (.env file)")
     sys.exit(1)
+
+# Initialize config manager
+config_manager = ConfigManager()
 
 
 @app.route('/api/models', methods=['GET'])
@@ -146,6 +150,51 @@ def rephrase():
             'X-Accel-Buffering': 'no'
         }
     )
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Get current configuration with masked keys"""
+    try:
+        config_data = config_manager.get_config()
+        return jsonify(config_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/config', methods=['POST'])
+def save_config():
+    """Save configuration changes"""
+    try:
+        config_data = request.json
+        result = config_manager.save_config(config_data)
+
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/config/test-key', methods=['POST'])
+def test_api_key():
+    """Test if an API key is valid"""
+    try:
+        data = request.json
+        provider = data.get('provider')
+        api_key = data.get('api_key')
+
+        if not provider or not api_key:
+            return jsonify({
+                'success': False,
+                'message': 'Provider and API key are required'
+            }), 400
+
+        result = config_manager.test_api_key(provider, api_key)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 if __name__ == '__main__':

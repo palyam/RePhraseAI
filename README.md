@@ -13,19 +13,71 @@ AI-powered text rephrasing tool with real-time streaming. Transform text into di
 
 ## Quick Start
 
-### Backend Setup
+### Local Development (Recommended for Development)
+
+**macOS/Linux:**
+```bash
+./start.sh
+```
+
+**Windows:**
+```bash
+start.bat
+```
+
+**Ports:**
+- Frontend: http://localhost:5847
+- Backend: http://localhost:5000
+
+### Docker Way (Production/Isolated Environment)
+
+**Requirements:** Docker and Docker Compose installed
+
+```bash
+# Start (runs in background)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+**Ports:**
+- Frontend: http://localhost:5848
+- Backend: http://localhost:5001
+
+**Benefits:**
+- Runs independently (survives terminal close)
+- No need to install Python/Node
+- Consistent environment across machines
+- Easy to deploy
+- Uses different ports to avoid conflicts with local development
+
+The script will automatically:
+- Check and create virtual environment if needed
+- Install dependencies if missing
+- Start both backend and frontend servers
+- Open at http://localhost:5847
+
+Press `Ctrl+C` to stop all servers (terminal must stay open).
+
+### Manual Setup
+
+#### Backend Setup
 
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your API keys
 python app.py
 ```
 
-### Frontend Setup
+#### Frontend Setup
 
 ```bash
 cd frontend
@@ -35,7 +87,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:3000`
+Open `http://localhost:5847`
 
 ## Configuration
 
