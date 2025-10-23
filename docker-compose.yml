@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    image: satishpalyam556/rephraseai-backend:latest
+    # Uncomment to build locally instead:
+    # build: ./backend
     container_name: rephrase-backend
     ports:
       - "5001:5000"  # Map host port 5001 to container port 5000
@@ -15,9 +17,6 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-    volumes:
-      - ./backend:/app
-      - /app/venv  # Exclude venv from volume mount
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/models"]
@@ -27,15 +26,14 @@ services:
       start_period: 10s
 
   frontend:
-    build: ./frontend
+    image: satishpalyam556/rephraseai-frontend:latest
+    # Uncomment to build locally instead:
+    # build: ./frontend
     container_name: rephrase-frontend
     ports:
       - "5848:5847"  # Map host port 5848 to container port 5847
     environment:
       - VITE_API_URL=http://localhost:5001  # Point to Docker backend on host port 5001
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  # Exclude node_modules from volume mount
     depends_on:
       - backend
     restart: unless-stopped

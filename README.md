@@ -42,8 +42,18 @@ start.bat
 
 **Requirements:** Docker and Docker Compose installed
 
+**Quick Start (Pre-built Images):**
+
 ```bash
-# Start (runs in background)
+# 1. Download docker-compose.yml and .env.example
+curl -O https://raw.githubusercontent.com/palyasx/RePhraseAI/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/palyasx/RePhraseAI/main/.env.example
+
+# 2. Configure your API keys
+cp .env.example .env
+# Edit .env with your API keys
+
+# 3. Start (automatically pulls images from Docker Hub)
 docker-compose up -d
 
 # View logs
@@ -52,6 +62,10 @@ docker-compose logs -f
 # Stop
 docker-compose down
 ```
+
+**Docker Hub Images:**
+- Backend: `satishpalyam556/rephraseai-backend:latest`
+- Frontend: `satishpalyam556/rephraseai-frontend:latest`
 
 **Ports:**
 - Frontend: http://localhost:5848
@@ -63,6 +77,7 @@ docker-compose down
 - Consistent environment across machines
 - Easy to deploy
 - Uses different ports to avoid conflicts with local development
+- Pre-built images - no build time required
 
 The script will automatically:
 - Check and create virtual environment if needed
