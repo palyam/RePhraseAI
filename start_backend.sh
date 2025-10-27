@@ -2,15 +2,15 @@
 
 # Start RePhraseAI Backend Server
 
-# Check if ILIAD_API_KEY is set
-if [ -z "$ILIAD_API_KEY" ]; then
-    echo "Error: ILIAD_API_KEY environment variable is not set"
-    echo "Please set it using: export ILIAD_API_KEY=your-api-key"
+# Check if GATEWAY_API_KEY is set
+if [ -z "$GATEWAY_API_KEY" ]; then
+    echo "Error: GATEWAY_API_KEY environment variable is not set"
+    echo "Please set it using: export GATEWAY_API_KEY=your-api-key"
     exit 1
 fi
 
 echo "Starting RePhraseAI Backend..."
-echo "Using Iliad API Gateway"
+echo "Using custom LLM API Gateway"
 
 cd backend
 

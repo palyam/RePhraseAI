@@ -20,12 +20,12 @@ This document explains the key differences between calling Claude (Anthropic) an
 
 ### Claude (Anthropic)
 ```
-POST https://api-epic.ir-gateway.abbvienet.com/iliad/anthropic/v1/messages
+POST https://your-gateway.company.com/anthropic/v1/messages
 ```
 
 ### GPT (OpenAI)
 ```
-POST https://api-epic.ir-gateway.abbvienet.com/iliad/openai/deployments/{model}/chat/completions?api-version=2024-02-01
+POST https://your-gateway.company.com/openai/deployments/{model}/chat/completions?api-version=2024-02-01
 ```
 
 **Key Difference:**
