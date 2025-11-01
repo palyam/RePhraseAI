@@ -7,7 +7,7 @@ services:
     # build: ./backend
     container_name: rephrase-backend
     ports:
-      - "5001:5000"  # Map host port 5001 to container port 5000
+      - "5002:5000"  # Map host port 5002 to container port 5000
     environment:
       # Load from .env file in project root
       - LLM_MODE=${LLM_MODE:-gateway}
@@ -33,7 +33,7 @@ services:
     ports:
       - "5848:5847"  # Map host port 5848 to container port 5847
     environment:
-      - VITE_API_URL=http://localhost:5001  # Point to Docker backend on host port 5001
+      - VITE_API_URL=http://localhost:5002  # Point to Docker backend on host port 5002
     depends_on:
       - backend
     restart: unless-stopped

@@ -24,19 +24,24 @@ AI-powered text rephrasing tool with real-time streaming. Transform text into di
 
 ### Local Development (Recommended for Development)
 
-**macOS/Linux:**
+**Simplified Launcher (macOS/Linux):**
 ```bash
-./start.sh
+./rephrase.sh start    # Start servers
+./rephrase.sh stop     # Stop servers
+./rephrase.sh restart  # Restart servers
+./rephrase.sh status   # Check status
+./rephrase.sh          # Interactive menu
 ```
 
-**Windows:**
+**Global Access (after first run):**
 ```bash
-start.bat
+rephrase start    # Works from any directory
+rephrase status   # Check if running
 ```
 
 **Ports:**
 - Frontend: http://localhost:5847
-- Backend: http://localhost:5000
+- Backend: http://localhost:5002 (changed from 5001 to avoid macOS AirPlay conflict)
 
 ### Docker Way (Production/Isolated Environment)
 
@@ -69,7 +74,7 @@ docker-compose down
 
 **Ports:**
 - Frontend: http://localhost:5848
-- Backend: http://localhost:5001
+- Backend: http://localhost:5002
 
 **Benefits:**
 - Runs independently (survives terminal close)
@@ -79,13 +84,11 @@ docker-compose down
 - Uses different ports to avoid conflicts with local development
 - Pre-built images - no build time required
 
-The script will automatically:
-- Check and create virtual environment if needed
-- Install dependencies if missing
-- Start both backend and frontend servers
-- Open at http://localhost:5847
-
-Press `Ctrl+C` to stop all servers (terminal must stay open).
+**What's New:**
+- **Smart Model Filtering**: Frontend only shows models for configured API keys
+- **Environment Variables**: API keys can be stored in ~/.zshrc for global access
+- **tmux Integration**: Servers run in background, terminal can be closed
+- **Interactive Menu**: Easy server management with status, logs, and reconnect options
 
 ### Manual Setup
 
@@ -140,17 +143,29 @@ Alternatively, you can configure via files:
 
 Direct connection to LLM provider APIs.
 
-**backend/.env:**
+**Option 1: Environment Variables (Recommended for macOS/Linux):**
 ```bash
+# Add to ~/.zshrc or ~/.bashrc
+export OPENAI_API_KEY="sk-your-key"
+export ANTHROPIC_API_KEY="sk-ant-your-key"
+export GOOGLE_API_KEY="your-key"
+```
+
+**Option 2: .env File:**
+```bash
+# backend/.env
 LLM_MODE=direct
 OPENAI_API_KEY=sk-your-key
 ANTHROPIC_API_KEY=sk-ant-your-key
+GOOGLE_API_KEY=your-key
 ```
 
 **Install SDKs:**
 ```bash
 pip install openai anthropic google-generativeai
 ```
+
+**Note:** Only models for providers with valid API keys will be shown in the UI.
 
 **backend/config.json:**
 ```json
@@ -210,7 +225,7 @@ GATEWAY_API_KEY=your-gateway-key
 ```
 /RePhraseAI
 ├── docker-compose.yml      # Docker orchestration
-├── start.sh / start.bat    # Quick start scripts
+├── rephrase.sh             # Simplified launcher with tmux (macOS/Linux)
 ├── /frontend               # React 19 + Vite
 │   ├── Dockerfile
 │   ├── /src
@@ -252,20 +267,28 @@ GATEWAY_API_KEY=your-gateway-key
 
 **Backend not starting:**
 ```bash
-# Check .env exists and has API key
+# Check API keys are set (env or .env)
+echo $OPENAI_API_KEY
 cat backend/.env
 
-# Check port 5000
-lsof -ti:5000 | xargs kill -9
+# Check port 5002 (changed from 5001 to avoid macOS AirPlay)
+lsof -ti:5002 | xargs kill -9
 ```
 
 **Frontend can't connect:**
 ```bash
 # Check backend is running
-curl http://localhost:5000/api/models
+curl http://localhost:5002/api/models
 
 # Verify frontend .env
-cat frontend/.env  # Should have VITE_API_URL=http://localhost:5000
+cat frontend/.env  # Should have VITE_API_URL=http://localhost:5002
+```
+
+**macOS Port Conflict (5001):**
+```bash
+# Port 5001 is used by Apple's AirPlay Receiver
+# This project now uses port 5002 for backend
+# To disable AirPlay: System Settings > General > AirDrop & Handoff > AirPlay Receiver
 ```
 
 **Gateway mode issues:**

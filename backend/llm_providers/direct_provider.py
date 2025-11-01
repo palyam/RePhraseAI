@@ -46,16 +46,24 @@ class DirectProvider(BaseLLMProvider):
         anthropic_api_key = os.getenv('ANTHROPIC_API_KEY', '')
         google_api_key = os.getenv('GOOGLE_API_KEY', '')
 
+        # Helper function to check if API key is valid (not empty or placeholder)
+        def is_valid_key(key):
+            if not key:
+                return False
+            # Filter out common placeholder values
+            placeholders = ['your-', 'placeholder', 'example', 'xxx', 'yyy', 'zzz']
+            return not any(placeholder in key.lower() for placeholder in placeholders)
+
         # Initialize clients
-        if OPENAI_AVAILABLE and openai_api_key:
+        if OPENAI_AVAILABLE and is_valid_key(openai_api_key):
             self.openai_client = OpenAI(api_key=openai_api_key)
             print("[INFO] OpenAI client initialized")
 
-        if ANTHROPIC_AVAILABLE and anthropic_api_key:
+        if ANTHROPIC_AVAILABLE and is_valid_key(anthropic_api_key):
             self.anthropic_client = Anthropic(api_key=anthropic_api_key)
             print("[INFO] Anthropic client initialized")
 
-        if GOOGLE_AVAILABLE and google_api_key:
+        if GOOGLE_AVAILABLE and is_valid_key(google_api_key):
             genai.configure(api_key=google_api_key)
             self.gemini_configured = True
             print("[INFO] Google Gemini configured")
@@ -77,7 +85,21 @@ class DirectProvider(BaseLLMProvider):
         try:
             with open('config.json', 'r') as f:
                 config = json.load(f)
-                return config.get('available_models', {})
+                all_models = config.get('available_models', {})
+
+                # Filter models based on which API keys are configured
+                filtered_models = {}
+
+                if self.openai_client:
+                    filtered_models['openai'] = all_models.get('openai', [])
+
+                if self.anthropic_client:
+                    filtered_models['anthropic'] = all_models.get('anthropic', [])
+
+                if self.gemini_configured:
+                    filtered_models['google'] = all_models.get('google', [])
+
+                return filtered_models
         except:
             return {}
 

@@ -14,8 +14,8 @@ NC='\033[0m' # No Color
 SESSION_NAME="rephrase"
 BACKEND_DIR="/Users/jp/Code/RePhraseAI/backend"
 FRONTEND_DIR="/Users/jp/Code/RePhraseAI/frontend"
-BACKEND_PORT="5001"
-FRONTEND_PORT="5173"
+BACKEND_PORT="5002"
+FRONTEND_PORT="5847"
 
 # Helper function to print colored messages
 print_success() {
