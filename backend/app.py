@@ -16,15 +16,21 @@ app = Flask(__name__)
 CORS(app)
 
 # Load configuration based on mode
-llm_mode = os.getenv('LLM_MODE', 'direct').lower()
-config_file = 'config.gateway.json' if llm_mode == 'gateway' and os.path.exists('config.gateway.json') else 'config.json'
+llm_mode = os.getenv("LLM_MODE", "direct").lower()
+config_file = (
+    "config.gateway.json"
+    if llm_mode == "gateway" and os.path.exists("config.gateway.json")
+    else "config.json"
+)
 
 try:
-    with open(config_file, 'r') as f:
+    with open(config_file, "r") as f:
         config = json.load(f)
     print(f"[INFO] Loaded configuration from: {config_file}")
 except FileNotFoundError:
-    print(f"[ERROR] {config_file} not found. Please create it with your API configuration.")
+    print(
+        f"[ERROR] {config_file} not found. Please create it with your API configuration."
+    )
     sys.exit(1)
 except json.JSONDecodeError as e:
     print(f"[ERROR] Invalid JSON in {config_file}: {e}")
@@ -32,10 +38,10 @@ except json.JSONDecodeError as e:
 
 # Load prompts with error handling
 try:
-    with open('prompts.json', 'r') as f:
+    with open("prompts.json", "r") as f:
         prompts_data = json.load(f)
         # Create a lookup dict for easy access: {style_id: full_style_object}
-        prompts = {style['id']: style for style in prompts_data['styles']}
+        prompts = {style["id"]: style for style in prompts_data["styles"]}
 except FileNotFoundError:
     print("[ERROR] prompts.json not found. Please create it with style definitions.")
     sys.exit(1)
@@ -44,7 +50,31 @@ except (json.JSONDecodeError, KeyError) as e:
     sys.exit(1)
 
 # Configuration
-DEFAULT_MODEL = config['default_model']
+DEFAULT_MODEL = config["default_model"]
+
+# Channel-specific tone instructions injected into system prompts
+CHANNEL_TONES = {
+    "outlook": (
+        "Channel: Outlook Email. "
+        "Write in a professional, polished, and modern tone. "
+        "Use proper email structure (greeting, body, closing). "
+        "Be clear and concise while maintaining formality. "
+        "Avoid slang, emojis, and overly casual language."
+    ),
+    "teams": (
+        "Channel: Microsoft Teams Chat. "
+        "Write in a business casual, modern, and concise tone. "
+        "Keep it brief and scannable — short paragraphs or bullet points where appropriate. "
+        "Friendly but professional. Minimal use of emojis is acceptable."
+    ),
+    "whatsapp": (
+        "Channel: WhatsApp. "
+        "Write in a personal, casual, and fun tone. "
+        "Keep it conversational and warm. "
+        "Use emojis naturally to add personality. "
+        "Short sentences and informal language are encouraged."
+    ),
+}
 
 # Initialize LLM provider based on environment configuration
 try:
@@ -58,7 +88,7 @@ except Exception as e:
 config_manager = ConfigManager()
 
 
-@app.route('/api/models', methods=['GET'])
+@app.route("/api/models", methods=["GET"])
 def get_models():
     """Return available models list with default selected"""
     available_models = llm_provider.get_available_models()
@@ -66,73 +96,80 @@ def get_models():
     # Combine all available models
     all_models = []
     if available_models:
-        all_models.extend(available_models.get('anthropic', []))
-        all_models.extend(available_models.get('openai', []))
-        all_models.extend(available_models.get('google', []))
+        all_models.extend(available_models.get("anthropic", []))
+        all_models.extend(available_models.get("openai", []))
+        all_models.extend(available_models.get("google", []))
 
     # If no models configured, use defaults
     if not all_models:
-        all_models = [
-            "claude-3-5-sonnet-20241022",
-            "gpt-4-turbo",
-            "gemini-1.5-pro"
-        ]
+        all_models = ["claude-3-5-sonnet-20241022", "gpt-4-turbo", "gemini-1.5-pro"]
 
-    return jsonify({
-        "models": all_models,
-        "default": DEFAULT_MODEL,
-        "model_categories": available_models
-    })
+    return jsonify(
+        {
+            "models": all_models,
+            "default": DEFAULT_MODEL,
+            "model_categories": available_models,
+        }
+    )
 
 
-@app.route('/api/styles', methods=['GET'])
+@app.route("/api/styles", methods=["GET"])
 def get_styles():
     """Return available styles with their metadata"""
     # Return the styles array from prompts.json
     # Exclude the 'prompt' field from the response to keep it lightweight
     styles = []
     for style_id, style_data in prompts.items():
-        styles.append({
-            'id': style_data['id'],
-            'label': style_data['label'],
-            'icon': style_data['icon'],
-            'description': style_data['description']
-        })
+        styles.append(
+            {
+                "id": style_data["id"],
+                "label": style_data["label"],
+                "icon": style_data["icon"],
+                "description": style_data["description"],
+            }
+        )
     return jsonify({"styles": styles})
 
 
-@app.route('/api/rephrase', methods=['POST'])
+@app.route("/api/rephrase", methods=["POST"])
 def rephrase():
     """Streaming endpoint for text rephrasing - supports single or multiple styles"""
     data = request.json
-    text = data.get('text', '')
-    model = data.get('model', DEFAULT_MODEL)
-    additional_instructions = data.get('additional_instructions', '').strip()
+    text = data.get("text", "")
+    model = data.get("model", DEFAULT_MODEL)
+    additional_instructions = data.get("additional_instructions", "").strip()
+    channel = data.get("channel", "").strip().lower()
 
     # Support both single style and multiple styles
-    style = data.get('style')
-    styles = data.get('styles', [])
+    style = data.get("style")
+    styles = data.get("styles", [])
 
     # If single style provided, convert to list
     if style and not styles:
         styles = [style]
     elif not styles:
-        styles = ['default']
+        styles = ["default"]
 
     def generate():
         # Process each selected style
         for idx, current_style in enumerate(styles):
             # Get system prompt for the selected style
-            style_data = prompts.get(current_style, prompts['default'])
-            system_prompt = style_data['prompt']
+            style_data = prompts.get(current_style, prompts["default"])
+            system_prompt = style_data["prompt"]
+
+            # Append channel tone if specified
+            if channel and channel in CHANNEL_TONES:
+                system_prompt += f"\n\n{CHANNEL_TONES[channel]}"
 
             # Append additional instructions if provided
             if additional_instructions:
-                system_prompt += f"\n\nAdditional Instructions: {additional_instructions}"
+                system_prompt += (
+                    f"\n\nAdditional Instructions: {additional_instructions}"
+                )
 
             # Send style marker if multiple styles
             if len(styles) > 1:
-                style_label = style_data.get('label', current_style)
+                style_label = style_data.get("label", current_style)
                 yield f"data: {json.dumps({'style_start': current_style, 'style_label': style_label, 'style_index': idx})}\n\n"
 
             # Stream the response for this style
@@ -144,59 +181,123 @@ def rephrase():
 
     return Response(
         stream_with_context(generate()),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'X-Accel-Buffering': 'no'
-        }
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
-@app.route('/api/config', methods=['GET'])
+@app.route("/api/compose", methods=["POST"])
+def compose():
+    """Streaming endpoint for composing a response to an original message.
+
+    Accepts:
+      - original_message (required): the message the user received
+      - my_draft         (optional): the user's own draft response
+      - instructions     (optional): additional instructions for tone/style/content
+      - model            (optional): model to use
+    """
+    data = request.json
+    original_message = data.get("original_message", "").strip()
+    my_draft = data.get("my_draft", "").strip()
+    instructions = data.get("instructions", "").strip()
+    channel = data.get("channel", "").strip().lower()
+    model = data.get("model", DEFAULT_MODEL)
+
+    if not original_message:
+        return jsonify({"error": "original_message is required"}), 400
+
+    system_prompt = (
+        "You are a professional communication assistant. "
+        "Your job is to compose or refine a response to a message the user received. "
+        "Use the provided context sections below — each section is clearly labelled. "
+        "Produce only the final response text, with no preamble or meta-commentary."
+    )
+
+    # Inject channel-specific tone
+    if channel and channel in CHANNEL_TONES:
+        system_prompt += f" {CHANNEL_TONES[channel]}"
+
+    parts = [f"[Original Message]\n{original_message}"]
+
+    if my_draft:
+        parts.append(f"[My Draft Response]\n{my_draft}")
+
+    if instructions:
+        parts.append(f"[Instructions]\n{instructions}")
+
+    if my_draft and instructions:
+        parts.append(
+            "Task: Refine my draft response following the instructions above, keeping the intent intact."
+        )
+    elif my_draft:
+        parts.append(
+            "Task: Refine and improve my draft response to make it clear and professional."
+        )
+    elif instructions:
+        parts.append(
+            "Task: Compose a response to the original message following the instructions above."
+        )
+    else:
+        parts.append(
+            "Task: Compose a clear and appropriate response to the original message."
+        )
+
+    user_text = "\n\n".join(parts)
+
+    def generate():
+        yield from llm_provider.stream_response(model, system_prompt, user_text)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/api/config", methods=["GET"])
 def get_config():
     """Get current configuration with masked keys"""
     try:
         config_data = config_manager.get_config()
         return jsonify(config_data)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/config', methods=['POST'])
+@app.route("/api/config", methods=["POST"])
 def save_config():
     """Save configuration changes"""
     try:
         config_data = request.json
         result = config_manager.save_config(config_data)
 
-        if result['success']:
+        if result["success"]:
             return jsonify(result), 200
         else:
             return jsonify(result), 400
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
-@app.route('/api/config/test-key', methods=['POST'])
+@app.route("/api/config/test-key", methods=["POST"])
 def test_api_key():
     """Test if an API key is valid"""
     try:
         data = request.json
-        provider = data.get('provider')
-        api_key = data.get('api_key')
+        provider = data.get("provider")
+        api_key = data.get("api_key")
 
         if not provider or not api_key:
-            return jsonify({
-                'success': False,
-                'message': 'Provider and API key are required'
-            }), 400
+            return jsonify(
+                {"success": False, "message": "Provider and API key are required"}
+            ), 400
 
         result = config_manager.test_api_key(provider, api_key)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
-if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5002))
-    app.run(debug=True, host='0.0.0.0', port=port, threaded=True)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5002))
+    app.run(debug=True, host="0.0.0.0", port=port, threaded=True)

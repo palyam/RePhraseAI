@@ -9,6 +9,9 @@ import Settings from './components/Settings';
 // Get API URL from environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const CHANNEL_ICONS = { outlook: '📧', teams: '💬', whatsapp: '📱' };
+const CHANNEL_LABELS = { outlook: 'Outlook Email', teams: 'Teams Chat', whatsapp: 'WhatsApp' };
+
 function App() {
   const { theme, toggleTheme } = useTheme();
   const [selectedModel, setSelectedModel] = useState('gpt-4.1');
@@ -43,7 +46,124 @@ function App() {
     setCurrentUserText('');
   };
 
-  const handleStyleSelect = async (styleOrStyles, text, additionalInstructions = '') => {
+  const handleCompose = async (originalMessage, myDraft = '', instructions = '', channel = 'none') => {
+    setIsStreaming(true);
+
+    const startTime = performance.now();
+    let firstTokenTime = null;
+
+    // Build a readable summary for the chat display
+    const contentParts = [`**Original message:**\n> ${originalMessage}`];
+    if (myDraft) contentParts.push(`**My draft:**\n> ${myDraft}`);
+    if (instructions) contentParts.push(`**Instructions:** ${instructions}`);
+    if (channel && channel !== 'none') contentParts.push(`**Channel:** ${CHANNEL_LABELS[channel] || channel}`);
+
+    const userMessage = {
+      role: 'user',
+      content: contentParts.join('\n\n'),
+      isCompose: true,
+      id: `user-${Date.now()}`
+    };
+
+    const aiMessage = {
+      role: 'assistant',
+      content: '',
+      streaming: true,
+      style: 'compose',
+      styleLabel: channel && channel !== 'none'
+        ? `${CHANNEL_ICONS[channel]} ${CHANNEL_LABELS[channel]}`
+        : 'Composed Response',
+      model: selectedModel,
+      id: `compose-${Date.now() + 1}`
+    };
+
+    const newMessages = [...messages, userMessage, aiMessage];
+    const aiMessageIndex = newMessages.length - 1;
+    setMessages(newMessages);
+
+    try {
+      const response = await fetch(`${API_URL}/api/compose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          original_message: originalMessage,
+          my_draft: myDraft || undefined,
+          instructions: instructions || undefined,
+          channel: channel !== 'none' ? channel : undefined,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      let streamComplete = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data.trim() === '[DONE]') { streamComplete = true; break; }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                if (!firstTokenTime) firstTokenTime = performance.now();
+                accumulated += parsed.content;
+                setMessages(prev => {
+                  const updated = [...prev];
+                  if (updated[aiMessageIndex]) {
+                    updated[aiMessageIndex] = {
+                      ...updated[aiMessageIndex],
+                      content: accumulated,
+                      timeToFirstToken: firstTokenTime ? Math.round(firstTokenTime - startTime) : null
+                    };
+                  }
+                  return updated;
+                });
+              }
+            } catch (e) { /* ignore parse errors */ }
+          }
+        }
+        if (streamComplete) break;
+      }
+
+      const totalTime = Math.round(performance.now() - startTime);
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated[aiMessageIndex]) {
+          updated[aiMessageIndex].streaming = false;
+          updated[aiMessageIndex].totalTime = totalTime;
+          updated[aiMessageIndex].timeToFirstToken = firstTokenTime ? Math.round(firstTokenTime - startTime) : null;
+        }
+        return updated;
+      });
+
+    } catch (error) {
+      let errorMessage = 'Failed to compose response.';
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        errorMessage = 'Cannot connect to the backend server. Please ensure the backend is running at ' + API_URL;
+      }
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated[aiMessageIndex]) {
+          updated[aiMessageIndex] = { ...updated[aiMessageIndex], content: errorMessage, streaming: false, error: true };
+        }
+        return updated;
+      });
+    } finally {
+      setIsStreaming(false);
+    }
+  };
+
+  const handleStyleSelect = async (styleOrStyles, text, additionalInstructions = '', channel = 'none') => {
     setIsStreaming(true);
     setCurrentUserText(text);
 
@@ -90,6 +210,7 @@ function App() {
           styles: stylesArray,
           model: selectedModel,
           additional_instructions: additionalInstructions || undefined,
+          channel: channel !== 'none' ? channel : undefined,
         }),
       });
 
@@ -342,6 +463,7 @@ function App() {
             onSend={handleSendMessage}
             disabled={isStreaming}
             onStyleSelect={handleStyleSelect}
+            onCompose={handleCompose}
             onClear={handleClearMessages}
             hasMessages={messages.length > 0}
             theme={theme}

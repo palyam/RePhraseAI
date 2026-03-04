@@ -1,12 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Mic, MicOff, Eraser } from 'lucide-react';
+import { Send, Mic, MicOff, Eraser, MessageSquarePlus, ChevronDown, ChevronUp } from 'lucide-react';
 import StyleButtons from './StyleButtons';
 
-export default function InputBox({ onSend, disabled, onStyleSelect, onClear, hasMessages, theme }) {
+const CHANNELS = [
+  { id: 'none',    label: 'No channel',    icon: '—',  description: '' },
+  { id: 'outlook', label: 'Outlook Email', icon: '📧', description: 'Professional, modern' },
+  { id: 'teams',   label: 'Teams Chat',    icon: '💬', description: 'Business casual, concise' },
+  { id: 'whatsapp',label: 'WhatsApp',      icon: '📱', description: 'Personal, casual, fun' },
+];
+
+export default function InputBox({ onSend, disabled, onStyleSelect, onCompose, onClear, hasMessages, theme }) {
   const [text, setText] = useState('');
   const [additionalInstructions, setAdditionalInstructions] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [showOriginalMessage, setShowOriginalMessage] = useState(false);
+  const [originalMessage, setOriginalMessage] = useState('');
+  const [selectedChannel, setSelectedChannel] = useState('none');
   const recognitionRef = useRef(null);
 
   useEffect(() => {
@@ -70,14 +80,31 @@ export default function InputBox({ onSend, disabled, onStyleSelect, onClear, has
     if (text.trim() && !disabled) {
       const userText = text;
       const instructions = additionalInstructions;
+      const channel = selectedChannel;
       if (isListening) {
         recognitionRef.current.stop();
         setIsListening(false);
       }
       setText('');
       setAdditionalInstructions('');
-      // Use 'default' style when Enter is pressed without clicking a style button
-      onStyleSelect('default', userText, instructions);
+      onStyleSelect('default', userText, instructions, channel);
+    }
+  };
+
+  const handleCompose = () => {
+    if (originalMessage.trim() && !disabled) {
+      const original = originalMessage;
+      const myDraft = text;
+      const instructions = additionalInstructions;
+      const channel = selectedChannel;
+      if (isListening) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
+      setOriginalMessage('');
+      setText('');
+      setAdditionalInstructions('');
+      onCompose(original, myDraft, instructions, channel);
     }
   };
 
@@ -100,6 +127,89 @@ export default function InputBox({ onSend, disabled, onStyleSelect, onClear, has
       <div className="max-w-5xl mx-auto">
         <div className="flex gap-3 items-end">
           <div className="flex-1 relative space-y-2">
+            {/* Channel Selector */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {CHANNELS.map(ch => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => setSelectedChannel(ch.id)}
+                  disabled={disabled}
+                  title={ch.description}
+                  className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-200 ${
+                    selectedChannel === ch.id
+                      ? theme === 'dark'
+                        ? 'bg-cyan-900/40 border-cyan-700/60 text-cyan-300'
+                        : 'bg-blue-50 border-blue-400 text-blue-700'
+                      : theme === 'dark'
+                        ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <span>{ch.icon}</span>
+                  <span>{ch.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Original Message Toggle */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowOriginalMessage(prev => !prev)}
+                disabled={disabled}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-200 ${
+                  showOriginalMessage
+                    ? theme === 'dark'
+                      ? 'bg-cyan-900/40 border-cyan-700/60 text-cyan-400'
+                      : 'bg-blue-50 border-blue-300 text-blue-600'
+                    : theme === 'dark'
+                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <MessageSquarePlus size={13} />
+                Include original message
+                {showOriginalMessage ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+
+              {showOriginalMessage && (
+                <div className="mt-2 space-y-2">
+                  <textarea
+                    value={originalMessage}
+                    onChange={(e) => setOriginalMessage(e.target.value)}
+                    placeholder="Paste the original message you want to respond to..."
+                    disabled={disabled}
+                    rows={3}
+                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 disabled:cursor-not-allowed resize-none text-sm transition-all duration-200 ${
+                      theme === 'dark'
+                        ? 'border-slate-600 focus:border-cyan-500/60 focus:ring-cyan-900/20 bg-slate-800/80 text-slate-100 placeholder-slate-500'
+                        : 'border-blue-200 focus:border-blue-400 focus:ring-blue-200/40 bg-white text-gray-800 placeholder-gray-400'
+                    }`}
+                    style={{ minHeight: '80px', maxHeight: '200px' }}
+                    onInput={(e) => {
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCompose}
+                    disabled={disabled || !originalMessage.trim()}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-95 shadow-sm ${
+                      theme === 'dark'
+                        ? 'bg-gradient-to-br from-cyan-700 to-cyan-800 border-cyan-600/50 text-white hover:from-cyan-600 hover:to-cyan-700 shadow-cyan-900/30'
+                        : 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-400 text-white hover:from-blue-600 hover:to-blue-700 shadow-blue-200/40'
+                    }`}
+                  >
+                    <MessageSquarePlus size={15} />
+                    Compose Response
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Main text input */}
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -162,17 +272,17 @@ export default function InputBox({ onSend, disabled, onStyleSelect, onClear, has
               {text.trim() && (
                 <StyleButtons
                   onStyleSelect={(styleOrStyles) => {
-                    // Trigger style selection (which now handles adding the user message)
                     if (text.trim() && !disabled) {
                       const userText = text;
                       const instructions = additionalInstructions;
+                      const channel = selectedChannel;
                       if (isListening) {
                         recognitionRef.current.stop();
                         setIsListening(false);
                       }
                       setText('');
                       setAdditionalInstructions('');
-                      onStyleSelect(styleOrStyles, userText, instructions);
+                      onStyleSelect(styleOrStyles, userText, instructions, channel);
                     }
                   }}
                   disabled={disabled}
